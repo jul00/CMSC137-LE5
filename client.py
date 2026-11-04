@@ -1,7 +1,13 @@
 import getpass
 import json
 import socket
+import sys
 import threading
+
+try:
+    import msvcrt
+except ImportError:
+    msvcrt = None
 
 PORT = 55555
 peers = {}
@@ -12,6 +18,41 @@ roster_ready = threading.Event()
 def send_json(sock, payload):
     """Send one newline-delimited JSON packet."""
     sock.sendall(json.dumps(payload).encode("utf-8") + b"\n")
+
+
+def read_private_exponent():
+    """Read the private exponent, masking each digit with an asterisk on Windows."""
+    prompt = "Enter your private exponent d (kept on this device): "
+    if msvcrt is None:
+        return getpass.getpass(prompt)
+
+    sys.stdout.write(prompt)
+    sys.stdout.flush()
+    digits = []
+    while True:
+        char = msvcrt.getwch()
+        if char in ("\r", "\n"):
+            sys.stdout.write("\n")
+            break
+        if char == "\x03":
+            raise KeyboardInterrupt
+        if char in ("\x00", "\xe0"):
+            msvcrt.getwch()  # Consume the second character for a special key.
+            continue
+        if char in ("\b", "\x7f"):
+            if digits:
+                digits.pop()
+                sys.stdout.write("\b \b")
+                sys.stdout.flush()
+            continue
+        if char.isdigit():
+            digits.append(char)
+            sys.stdout.write("*")
+            sys.stdout.flush()
+
+    if not digits:
+        raise ValueError("The private exponent cannot be empty.")
+    return "".join(digits)
 
 
 def encrypt_for_peer(message, public_key):
@@ -109,7 +150,7 @@ def main():
     nickname = input("Choose your nickname: ").strip()
     n = int(input("Enter your public modulus n: ").strip())
     e = int(input("Enter your public exponent e: ").strip())
-    d = int(getpass.getpass("Enter your private exponent d (kept on this device): ").strip())
+    d = int(read_private_exponent())
     if n <= 255 or e <= 0 or d <= 0:
         raise ValueError("Invalid RSA key values; n must be greater than 255 and e/d must be positive.")
 
