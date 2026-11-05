@@ -1,4 +1,4 @@
-# DeArroz_RR_LE5.1_sender.py
+# sender.py
 # Sender (client): sends one precinct's votes to the receiver using CRC.
 
 import socket
