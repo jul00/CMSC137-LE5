@@ -41,4 +41,3 @@ def encode_data(data_str, key):
     # Combined binary codeword containing data + checksum
     codeword = bin_data + remainder
     return codeword, bin_data
-    
